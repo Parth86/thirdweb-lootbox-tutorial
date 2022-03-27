@@ -7,6 +7,8 @@ import {
 } from "../pages/api/check-answer";
 import PrimaryButton from "./primary-button";
 import invariant from "tiny-invariant";
+import { useWeb3 } from "@3rdweb/hooks"
+
 
 type Props = {
   questionIndex: number;
@@ -35,6 +37,13 @@ export default function QuizQuestion({
     undefined
   );
 
+  const { address, provider } = useWeb3(); // address of user's wallet
+  //The provider represents a read-only connection to the blockchain network, in our case that’ll be the Polygon Mumbai test network. It’s a Provider object from the ethers library,
+
+  if (!address) {
+    return <p>Please connect your wallet to take the quiz!</p>
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -44,10 +53,18 @@ export default function QuizQuestion({
         answerIndex !== undefined,
         "Answer index is required to submit"
       );
+      //we’re just making sure that provider is defined. It will be as long as the user’s wallet is connected!
+      invariant(provider !== undefined, "Provider must be defined to submit an answer")
+
+      const message = "Please sign this message to confirm your identity and submit the answer.This won't cost any gas!"
+      const signedMessage = await provider.getSigner().signMessage(message)
 
       const payload: CheckAnswerPayload = {
+        //address,
         questionIndex,
         answerIndex,
+        message,
+        signedMessage,
       };
 
       const checkResponse = await axios.post("/api/check-answer", payload);
